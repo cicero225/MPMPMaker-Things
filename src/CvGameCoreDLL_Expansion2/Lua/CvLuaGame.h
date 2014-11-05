@@ -376,11 +376,11 @@ protected:
 	static int lGetNumArchaeologySites(lua_State *L);
 	static int lGetNumHiddenArchaeologySites(lua_State *L);
 
-		static int lDeleteMPMP(lua_State *L);
-		static int lCreateMPMP(lua_State *L);
-		static int lWriteMPMP(lua_State *L);
-		static int lCopyModDataToMPMP(lua_State *L);
-		static int lAddUIAddinToMPMP(lua_State *L);
+	static int lDeleteMPMP(lua_State *L);
+	static int lCreateMPMP(lua_State *L);
+	static int lWriteMPMP(lua_State *L);
+	static int lCopyModDataToMPMP(lua_State *L);
+	static int lAddUIAddinToMPMP(lua_State *L);
 };
 
 #endif //CVLUAGAME_H

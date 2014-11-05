@@ -380,11 +380,11 @@ void CvLuaGame::RegisterMembers(lua_State* L)
 	Method(GetNumArchaeologySites);
 	Method(GetNumHiddenArchaeologySites);
 
-		Method(DeleteMPMP);
-		Method(CreateMPMP);
-		Method(WriteMPMP);
-		Method(CopyModDataToMPMP);
-		Method(AddUIAddinToMPMP);
+	Method(DeleteMPMP);
+	Method(CreateMPMP);
+	Method(WriteMPMP);
+	Method(CopyModDataToMPMP);
+	Method(AddUIAddinToMPMP);
 }
 //------------------------------------------------------------------------------
 
