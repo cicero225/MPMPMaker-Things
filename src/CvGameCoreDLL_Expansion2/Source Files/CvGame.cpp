@@ -11805,7 +11805,7 @@ bool CvGame::WriteMPMP(const char* szFileName, const char* szDataBase, bool bIni
 	return true;
 }
 
-bool CvGame::CopyModDataToMPMP(const char* szModFolder)
+bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 {
 	// Logging
 	FILogFile* pLog;
@@ -11854,7 +11854,7 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder)
 	
 	// Copy the Mod's files in the new folder	
 	int iRC = 0;
-	iRC = CopyModFiles(strModsPath, strDLCPath);
+	iRC = CopyModFiles(strModsPath, strDLCPath, Banned);
 	if (iRC)
 	{
 		strTemp.Format("Copying mod failed with Error %d", iRC);
@@ -11996,7 +11996,7 @@ int CvGame::OverrideGamePlayFiles(const std::string &refcstrRootDirectory)
 }
 
 // And copied here again to recursively copy all files from a mod's folder
-int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory)
+int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const char* Banned)
 {
 	HANDLE          hFile;                       // Handle to directory
 	CvString	    strFilePath;                 // Filepath
@@ -12004,11 +12004,26 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 	CvString		strBuffer;					 // Buffer
 	std::string     strPattern;                  // Pattern
 	WIN32_FIND_DATA FileInformation;             // File information
+	std::vector<CvString> bannedXmlList;		 // List of Banned XML files
+	std::string		strBanned;					 // string container for Banner - it makes things better, in case of secret Unicode
+	std::string 	strFileName;				 // string container for filename
+	int				strLoc;
+	int				newLoc;
 
 	strPattern = strModDirectory + "\\*.*";
 	hFile = ::FindFirstFile(strPattern.c_str(), &FileInformation);
 	if(hFile != INVALID_HANDLE_VALUE)
 	{
+		//Heironym: Kludge: There doesn't seem to be an implemented way to read in lua tables that I can trust
+		//lua_gettable isn't called a single time by anything in the original source, so I don't know what it returns
+		//To be safe, passing string instead (delimited by | which is banned from filenames on Windows
+		//Not using stringstream because inelegant and slow
+		strBanned=Banned;
+		strLoc=0;
+		while((newLoc=strBanned.find("|",strLoc))!=string::npos){ //If I knew anything about iterators, this probably wouldn't be necessary
+			bannedXmlList.push_back(strBanned.substr(strLoc,newLoc-1)); //assumes string doesn't start with |...but does end with |
+			strLoc=newLoc+1;
+		}
 		do
 		{
 		  if(FileInformation.cFileName[0] != '.')
@@ -12026,7 +12041,16 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 			else
 			{
 				// Copy the file
+				//Heironym: Check if file matches banned file names. If so, append "_RENAMED"
+				//A little hardcoded but it will probably be okay
 				strNewFilePath = strDLCDirectory + "\\" + FileInformation.cFileName;
+				for (int iter=0; iter<bannedXmlList.size(); iter++){
+					if !bsnnedXmlList[iter].CompareNoCase(FileInformation.cFileName){
+						strFileName=FileInformation.cFileName;
+						strNewFilePath = strDLCDirectory + "\\" + strFileName.substr(0,strFileName.size()-4) + "_RENAMED" + strFileName.substr(strFileName.size()-4);
+						break;
+					}
+				}
 				CopyFile(strFilePath, strNewFilePath, false); // todo: handle errors
 			}
 		  }
