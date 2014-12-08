@@ -572,7 +572,7 @@ public:
 	bool CopyModDataToMPMP(const char* szModFolder,const char* Banned);
 	int  DeleteDirectory(const std::string &refcstrRootDirectory, bool bDeleteSubdirectories);
 	int  OverrideGamePlayFiles(const std::string &refcstrRootDirectory);
-	int  CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const char* Banned);
+	int  CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const std::string & strBanned);
 	bool AddUIAddinToMPMP(const char* szUIFileName, const char* szAddinFileName);
 	//RED >>>>>
 

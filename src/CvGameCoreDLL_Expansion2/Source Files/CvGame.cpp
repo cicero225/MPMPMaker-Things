@@ -11816,6 +11816,15 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 	strOutBuf = "Copy Mod's Data To MPMP Folder for " + strTemp ;
 	pLog->Msg(strOutBuf);
 
+	// Do not allow NULL entries
+	if(Banned == NULL || strlen(Banned) == 0)
+	{
+		pLog->Msg("Banned is NULL, aborting");
+		pLog->Msg("--------------------------------------------------------------------------------");
+		return false;
+	}
+	CvString tempBanned=Banned ;
+
 	// Get Mods folder	
 	CvString strModsPath;
 	CvString strINIPath; //
@@ -11838,6 +11847,7 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 	strOutBuf = "Path to the mod's folder :" + strModsPath;
 	pLog->Msg(strOutBuf);
 
+
 	// Check if the folder exist
 	DWORD ftyp = GetFileAttributesA(strModsPath.c_str());
 	if (ftyp == INVALID_FILE_ATTRIBUTES)
@@ -11854,7 +11864,9 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 	
 	// Copy the Mod's files in the new folder	
 	int iRC = 0;
-	iRC = CopyModFiles(strModsPath, strDLCPath, Banned);
+	strOutBuf = "Copying Mod Files in Folder...";
+	pLog->Msg(strOutBuf);
+	iRC = CopyModFiles(strModsPath, strDLCPath, tempBanned);
 	if (iRC)
 	{
 		strTemp.Format("Copying mod failed with Error %d", iRC);
@@ -11996,7 +12008,7 @@ int CvGame::OverrideGamePlayFiles(const std::string &refcstrRootDirectory)
 }
 
 // And copied here again to recursively copy all files from a mod's folder
-int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const char* Banned)
+int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const std::string &strBanned)
 {
 	HANDLE          hFile;                       // Handle to directory
 	CvString	    strFilePath;                 // Filepath
@@ -12005,11 +12017,16 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 	std::string     strPattern;                  // Pattern
 	WIN32_FIND_DATA FileInformation;             // File information
 	std::vector<CvString> bannedXmlList;		 // List of Banned XML files
-	std::string		strBanned;					 // string container for Banner - it makes things better, in case of secret Unicode
+	//std::string		strBanned;					 // string container for Banner - it makes things better, in case of secret Unicode
 	std::string 	strFileName;				 // string container for filename
-	int				strLoc;
-	int				newLoc;
+	std::size_t		strLoc;
+	std::size_t		newLoc;
+	FILogFile*		pLog; //Log for MPMP
 
+	pLog = LOGFILEMGR.GetLog("MPMPMaker.log", FILogFile::kDontTimeStamp);
+
+	strBuffer = "Beginning Mod File Copy...";
+	pLog->Msg(strBuffer);
 	strPattern = strModDirectory + "\\*.*";
 	hFile = ::FindFirstFile(strPattern.c_str(), &FileInformation);
 	if(hFile != INVALID_HANDLE_VALUE)
@@ -12018,10 +12035,11 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 		//lua_gettable isn't called a single time by anything in the original source, so I don't know what it returns
 		//To be safe, passing string instead (delimited by | which is banned from filenames on Windows
 		//Not using stringstream because inelegant and slow
-		strBanned=Banned;
+		pLog->Msg(strBanned.c_str());
+		//strBanned=Banned;
 		strLoc=0;
-		while((newLoc=strBanned.find("|",strLoc))!=string::npos){ //If I knew anything about iterators, this probably wouldn't be necessary
-			bannedXmlList.push_back(strBanned.substr(strLoc,newLoc-1)); //assumes string doesn't start with |...but does end with |
+		while((newLoc=strBanned.find('|',strLoc))!=std::string::npos){ //If I knew anything about iterators, this probably wouldn't be necessary
+			bannedXmlList.push_back(strBanned.substr(strLoc,newLoc-strLoc)); //assumes string doesn't start with |...but does end with |
 			strLoc=newLoc+1;
 		}
 		do
@@ -12034,18 +12052,22 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 			if(FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
 				// Found subdirectory
-				int iRC = CopyModFiles(strFilePath,strDLCDirectory); // do we want to create subdirs ? if yes, this need attention.
+				int iRC = CopyModFiles(strFilePath,strDLCDirectory,strBanned); // do we want to create subdirs ? if yes, this need attention.
 				if(iRC)
 					return iRC;
 			}
 			else
 			{
+				strBuffer="Checking for files to be renamed...";
+				pLog->Msg(strBuffer);
 				// Copy the file
 				//Heironym: Check if file matches banned file names. If so, append "_RENAMED"
 				//A little hardcoded but it will probably be okay
 				strNewFilePath = strDLCDirectory + "\\" + FileInformation.cFileName;
-				for (int iter=0; iter<bannedXmlList.size(); iter++){
-					if !bsnnedXmlList[iter].CompareNoCase(FileInformation.cFileName){
+				for (unsigned int iter=0; iter<bannedXmlList.size(); iter++){
+					strBuffer=bannedXmlList[iter]+".xml";
+					pLog->Msg(strBuffer);				
+					if (!strBuffer.CompareNoCase(FileInformation.cFileName)){
 						strFileName=FileInformation.cFileName;
 						strNewFilePath = strDLCDirectory + "\\" + strFileName.substr(0,strFileName.size()-4) + "_RENAMED" + strFileName.substr(strFileName.size()-4);
 						break;
