@@ -390,6 +390,9 @@ function CopyTextDatabase()
 		if not (string.find(tostring(result.Tag), "TURN_REMINDER_EMAIL")) then -- to do : encode the HTML tags in those strings...
 			sDatabase = "		<Replace Tag=\"".. tostring(result.Tag) .."\"> \n"
 			sDatabase = sDatabase .. "			<Text>\n				".. tostring(result.Text) .."\n			</Text>\n"
+			if result.Gender then
+				sDatabase = sDatabase .. "			<Gender>\n				".. tostring(result.Gender) .."\n			</Gender>\n"
+			end
 			sDatabase = sDatabase .. "		</Replace>"
 			CleanWrite( textFileName, sDatabase, false)
 		end
