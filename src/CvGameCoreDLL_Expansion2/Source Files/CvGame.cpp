@@ -11805,14 +11805,14 @@ bool CvGame::WriteMPMP(const char* szFileName, const char* szDataBase, bool bIni
 	return true;
 }
 
-bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
+bool CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char* version,const char* Banned)
 {
 	// Logging
 	FILogFile* pLog;
 	CvString strTemp;
 	CvString strOutBuf;
 	pLog = LOGFILEMGR.GetLog("MPMPMaker.log", FILogFile::kDontTimeStamp);
-	strTemp = szModFolder;
+	strTemp = szModName;
 	strOutBuf = "Copy Mod's Data To MPMP Folder for " + strTemp ;
 	pLog->Msg(strOutBuf);
 
@@ -11840,25 +11840,27 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 	strOutBuf = "Path to \"My Documents\" folder :" + strTemp;
 	pLog->Msg(strOutBuf);
 	
-	strModsPath = strTemp + "\\my games\\Sid Meier's Civilization 5\\MODS\\";
-	strTemp = szModFolder;	
-	strModsPath += strTemp;
+	strModsPath = strTemp + "\\my games\\Sid Meier's Civilization 5\\MODS";
+		
+	//check mod folder for correct mod, wich has the correct id and version in its .modinfo
+	strTemp = GetModFromIdAndVersion(strModsPath,szModName,id,version);
+	if (strTemp.size() == 0)
+	{
+		//error, folder not found
+		pLog->Msg("Copying mod failed: Folder Not Found");
+		pLog->Msg(strTemp);
+		pLog->Msg("--------------------------------------------------------------------------------");
+		return false;
+	}
+	
+	strModsPath = strTemp;
 
 	strOutBuf = "Path to the mod's folder :" + strModsPath;
 	pLog->Msg(strOutBuf);
 
-
-	// Check if the folder exist
-	DWORD ftyp = GetFileAttributesA(strModsPath.c_str());
-	if (ftyp == INVALID_FILE_ATTRIBUTES)
-	{
-		pLog->Msg("Mod's path does not exist, aborting...");
-		pLog->Msg("--------------------------------------------------------------------------------");
-		return false;
-	}
-
 	// Create new folder in MP Modspack	
-	strTemp = szModFolder;
+	strTemp = szModName;
+	strTemp += " (v " + std::string(version) + ")";
 	CvString strDLCPath = "assets\\DLC\\MP_MODSPACK\\Mods\\" + strTemp;
 	CreateDirectory(strDLCPath, NULL);
 	
@@ -11881,6 +11883,72 @@ bool CvGame::CopyModDataToMPMP(const char* szModFolder,const char* Banned)
 	return true;
 }
 
+CvString CvGame::GetModFromIdAndVersion(const std::string &refcstrRootDirectory,const std::string &modName,const std::string &id, const std::string &version)
+{
+  HANDLE          hFile;                       // Handle to directory
+  std::string     strFolderPath;               // Folder path
+  std::string     strPattern;                  // Pattern
+  WIN32_FIND_DATA FileInformation;             // File information
+  
+  std::string     strFilePath;               // File path
+  WIN32_FIND_DATA ModinfoFileInformation; // Modinfo file information
+  HANDLE hModInfoFile; // Handle to modinfo file
+  
+  strPattern = refcstrRootDirectory + "\\*.*";
+  hFile = ::FindFirstFile(strPattern.c_str(), &FileInformation);
+  if(hFile != INVALID_HANDLE_VALUE)
+  {
+    do
+    {
+      if(FileInformation.cFileName[0] != '.')
+      {
+        strFolderPath.erase();
+        strFolderPath = refcstrRootDirectory + "\\" + FileInformation.cFileName;
+
+        if(FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+			std::string strTemp = modName + " (v " + version + ").modinfo";
+
+			//folder found, check .modinfo
+			strPattern = strFolderPath + "\\*.modinfo";
+			hModInfoFile = ::FindFirstFile(strPattern.c_str(), &ModinfoFileInformation);
+			if(hModInfoFile != INVALID_HANDLE_VALUE)
+			{
+				if (strTemp.compare(ModinfoFileInformation.cFileName) == 0){
+					//file found is named correctly
+					strFilePath = strFolderPath + "\\" + ModinfoFileInformation.cFileName;
+					
+					std::ifstream file(strFilePath.c_str());
+					std::string line;
+					while(std::getline(file, line)){
+						int char_1 = line.find('"');
+						int char_2 = line.find('"',char_1+1);
+						int char_3 = line.find('"',char_2+1);
+						int char_4 = line.find('"',char_3+1);
+						std::string mod_id = line.substr(char_1+1,char_2 - char_1 - 1);
+						std::string mod_version = line.substr(char_3+1,char_4 - char_3 - 1);
+						if (id.compare(mod_id) == 0 && version.compare(mod_version)==0)
+						{//match!
+							// Close handle
+							::FindClose(hModInfoFile);
+							::FindClose(hFile);
+							return strFolderPath;
+						}
+					}
+				}				
+			}
+			::FindClose(hModInfoFile);
+			//next folder		
+        }
+      }
+    } while(::FindNextFile(hFile, &FileInformation) == TRUE);
+
+    // Close handle
+    ::FindClose(hFile);
+  }
+  
+  return "";
+}
 
 // Code from http://forums.codeguru.com/showthread.php?239271-Windows-SDK-File-System-How-to-delete-a-directory-and-subdirectories
 int CvGame::DeleteDirectory(const std::string &refcstrRootDirectory, bool bDeleteSubdirectories = true)
