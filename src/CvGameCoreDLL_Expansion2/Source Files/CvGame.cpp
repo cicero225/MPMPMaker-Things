@@ -12076,7 +12076,7 @@ int CvGame::OverrideGamePlayFiles(const std::string &refcstrRootDirectory)
 }
 
 // And copied here again to recursively copy all files from a mod's folder
-int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory,const std::string &strBanned)
+int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory, const std::string &strBanned)
 {
 	HANDLE          hFile;                       // Handle to directory
 	CvString	    strFilePath;                 // Filepath
@@ -12120,7 +12120,8 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 			if(FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
 				// Found subdirectory
-				int iRC = CopyModFiles(strFilePath,strDLCDirectory,strBanned); // do we want to create subdirs ? if yes, this need attention.
+				CreateDirectory((strDLCDirectory + "\\"+FileInformation.cFileName).c_str(),NULL); //using Windows function since we're already doing that anyway
+				int iRC = CopyModFiles(strFilePath,strDLCDirectory + "\\" + FileInformation.cFileName,strBanned); // do we want to create subdirs ? if yes, this need attention. //Hieronym: Yes we do
 				if(iRC)
 					return iRC;
 			}
