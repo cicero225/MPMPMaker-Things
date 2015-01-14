@@ -2811,9 +2811,11 @@ return GC.getGame().WriteMPMP(szFileName, szDataBase, bInitialize);
 //------------------------------------------------------------------------------
 int CvLuaGame::lCopyModDataToMPMP(lua_State* L)
 {
-const char* szModFolder = lua_tostring(L, 1);
-const char* Banned = lua_tostring(L, 2);
-return GC.getGame().CopyModDataToMPMP(szModFolder,Banned);
+	const char* szModName = lua_tostring(L, 1);
+	const char* id = lua_tostring(L, 2);
+	const char* version = lua_tostring(L, 3);
+	const char* Banned = lua_tostring(L, 4);
+	return GC.getGame().CopyModDataToMPMP(szModName,id,version,Banned);
 }//------------------------------------------------------------------------------
 int CvLuaGame::lAddUIAddinToMPMP(lua_State* L)
 {
