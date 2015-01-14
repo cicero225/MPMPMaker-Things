@@ -169,24 +169,13 @@ function CopyActivatedMods()
 	local activatedMods = Modding.GetActivatedMods()
 	for i,v in ipairs(activatedMods) do
 		if v.ID ~= MPMPMakerModID then -- but not this mod !
-			local folder = Modding.GetModProperty(v.ID, v.Version, "Name");
-			folder = tostring(folder) .. " (v ".. tostring(v.Version) .. ")"		
-			-- to do: pass modID and version, parse the Mods folder in C++ for .modinfo files to find the correct folder even if it was not conventionnaly named...
-			print2 ("Copying " .. folder)
-			local Banned="CIV5AICityStrategies|CIV5AIEconomicStrategies|CIV5AIGrandStrategies|CIV5AIMilitaryStrategies|CIV5CitySpecializations|CIV5TacticalMoves|CIV5Attitudes|CIV5Calendars|CIV5CitySizes|CIV5Concepts|CIV5Contacts|CIV5DenialInfos|CIV5Domains|CIV5InvisibleInfos|CIV5MajorCivApproachTypes|CIV5MemoryInfos|CIV5MinorCivApproachTypes|CIV5MinorCivTraits|CIV5Months|CIV5Seasons|CIV5UnitAIInfos|CIV5UnitCombatInfos|CIV5BuildingClasses|CIV5Buildings|CIV5Civilizations|CIV5MinorCivilizations|CIV5Regions|CIV5Traits|Civ5Diplomacy_Responses|CIV5ArtStyleTypes|CIV5Climates|CIV5CultureLevels|CIV5Cursors|CIV5EmphasizeInfos|CIV5Eras|CIV5Flavors|CIV5GameOptions|CIV5GameSpeeds|CIV5GoodyHuts|CIV5HandicapInfos|CIV5HurryInfos|CIV5IconFontMapping|CIV5IconTextureAtlases|CIV5MultiplayerOptions|CIV5PlayerOptions|CIV5Policies|CIV5PolicyBranchTypes|CIV5Processes|CIV5Projects|CIV5Replays|CIV5SeaLevels|CIV5SmallAwards|CIV5Specialists|CIV5Trades|CIV5TurnTimers|CIV5Victories|CIV5Votes|CIV5VoteSources|CIV5Worlds|CIV5Colors|CIV5InterfaceModes|CIV5PlayerColors|CIV5LeaderTables|CIV5Routes|CIV5HintText|CIV5ModdingText|CIV5_Victory|CIV5Technologies|CIV5Features|CIV5Improvements|CIV5ResourceClasses|CIV5Resources|CIV5Terrains|CIV5Yields|Civ5AnimationCategories|Civ5AnimationPaths|CIV5Automates|CIV5Builds|CIV5Commands|CIV5Controls|Civ5EntityEvents|CIV5Missions|CIV5MultiUnitFormations|CIV5SpecialUnits|CIV5UnitClasses|CIV5UnitMovementRates|CIV5UnitPromotions|CIV5Units|"
-			local bCopied = Game.CopyModDataToMPMP(folder,Banned)
+			local name = Modding.GetModProperty(v.ID, v.Version, "Name");	
+			print2 ("Copying " .. name)
+			local Banned="CIV5AICityStrategies|CIV5AIEconomicStrategies|CIV5AIGrandStrategies|CIV5AIMilitaryStrategies|CIV5CitySpecializations|CIV5TacticalMoves|CIV5Attitudes|CIV5Calendars|CIV5CitySizes|CIV5Concepts|CIV5Contacts|CIV5DenialInfos|CIV5Domains|CIV5InvisibleInfos|CIV5MajorCivApproachTypes|CIV5MemoryInfos|CIV5MinorCivApproachTypes|CIV5MinorCivTraits|CIV5Months|CIV5Seasons|CIV5UnitAIInfos|CIV5UnitCombatInfos|CIV5BuildingClasses|CIV5Buildings|CIV5Civilizations|CIV5MinorCivilizations|CIV5Regions|CIV5Traits|Civ5Diplomacy_Responses|CIV5ArtStyleTypes|CIV5Climates|CIV5CultureLevels|CIV5Cursors|CIV5EmphasizeInfos|CIV5Eras|CIV5Flavors|CIV5GameOptions|CIV5GameSpeeds|CIV5GoodyHuts|CIV5HandicapInfos|CIV5HurryInfos|CIV5IconFontMapping|CIV5IconTextureAtlases|CIV5MultiplayerOptions|CIV5PlayerOptions|CIV5Policies|CIV5PolicyBranchTypes|CIV5Processes|CIV5Projects|CIV5Replays|CIV5SeaLevels|CIV5SmallAwards|CIV5Specialists|CIV5Trades|CIV5TurnTimers|CIV5Victories|CIV5Votes|CIV5VoteSources|CIV5Worlds|CIV5Colors|CIV5InterfaceModes|CIV5PlayerColors|CIV5LeaderTables|CIV5Routes|CIV5HintText|CIV5ModdingText|CIV5_Victory|CIV5Technologies|CIV5Features|CIV5Improvements|CIV5ResourceClasses|CIV5Resources|CIV5Terrains|CIV5Yields|Civ5AnimationCategories|Civ5AnimationPaths|CIV5Automates|CIV5Builds|CIV5Commands|CIV5Controls|Civ5EntityEvents|CIV5Missions|CIV5MultiUnitFormations|CIV5SpecialUnits|CIV5UnitClasses|CIV5UnitMovementRates|CIV5UnitPromotions|CIV5Units|"						
+			-- pass modID and version, parse the Mods folder in C++ for .modinfo files to find the correct folder even if it was not conventionnaly named...
+			local bCopied = Game.CopyModDataToMPMP(name, v.ID, tostring(v.Version),Banned)
 			if not bCopied then
-				-- convert to civfanatics downloaded name
-				folder = string.lower(folder)
-				folder = string.gsub(folder, " ", "_")
-				folder = string.gsub(folder, "%)", "")
-				folder = string.gsub(folder, "%(", "_")
-				print2 ("Failed ! trying " .. folder)
-				--yes this is inelegant, but better than making the civ 5 dll read a text file or trying to add this to the game database
-				local bCopied = Game.CopyModDataToMPMP(folder,Banned)
-				if not bCopied then
-					error ("Failed! Check Folder Names!")
-				end
+				error ("Failed! Couldn't find folder for mod: " .. name)
 			end
 		end
 	end
