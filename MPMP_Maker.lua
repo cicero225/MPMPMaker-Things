@@ -254,6 +254,7 @@ function CopyAudioDatabase()
 					tagStr="bIsMusic"
 				elseif tagStr=="Priority" then
 					tagStr="iPriority"
+					--boolDoThis=false
 				elseif not ((tagStr=="SoundType") or (tagStr=="SoundID") or (tagStr=="ScriptID")) then
 					boolDoThis=false
 				end
@@ -311,6 +312,8 @@ function CopyAudioDefines()
 					tagStr="bOnlyLoadOneVariationEachTime"
 				elseif tagStr=="FileName" then
 					tagStr="Filename"
+				elseif tagStr=="LoadType" then
+					valueStr="STREAMED" --Other types, like DynamicResident, are no longer supported
 				elseif not ((tagStr=="SoundID") or (tagStr=="LoadType")) then
 					boolDoThis=false
 				end
