@@ -415,6 +415,9 @@ function CopyTextDatabase()
 			if result.Gender then
 				sDatabase = sDatabase .. "			<Gender>\n				".. tostring(result.Gender) .."\n			</Gender>\n"
 			end
+			if result.Plurality then
+				sDatabase = sDatabase .. "			<Plurality>\n				".. tostring(result.Plurality) .."\n			</Plurality>\n"
+			end
 			sDatabase = sDatabase .. "		</Replace>"
 			CleanWrite( textFileName, sDatabase, false)
 		end
