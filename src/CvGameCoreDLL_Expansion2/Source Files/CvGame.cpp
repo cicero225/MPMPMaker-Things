@@ -11666,6 +11666,17 @@ void CvGame::SetLastTurnAICivsProcessed()
 // create a MPModspack folder in assets/DLC to copy (and format) activated mods
 //		
 
+/* Return TRUE if file 'fileName' exists */ //UTILITY FUNCTION
+bool MPMPFileExists(const TCHAR *fileName)
+{
+    DWORD       fileAttr;
+
+    fileAttr = GetFileAttributes(fileName);
+    if (0xFFFFFFFF == fileAttr)
+        return false;
+    return true;
+}
+
 bool CvGame::DeleteMPMP()
 {
 	// Logging
@@ -11738,9 +11749,18 @@ bool CvGame::CreateMPMP()
 
 	// Copy files from the base game for UIAddins
 	pLog->Msg("Copy UI files from base game...");
+	//KLUDGE for ENHANCED UI ONLY: Better way would be to check DLCs of the Civ 5 VFS for the highest priority version of these files
 	CopyFile("Assets\\DLC\\Expansion2\\UI\\InGame\\InGame.lua","assets\\DLC\\MP_MODSPACK\\UI\\InGame.lua", false);
-	CopyFile("Assets\\DLC\\Expansion2\\UI\\InGame\\CityView\\CityView.lua","assets\\DLC\\MP_MODSPACK\\UI\\CityView.lua", false);
-	CopyFile("Assets\\DLC\\Expansion2\\UI\\InGame\\LeaderHead\\LeaderHeadRoot.lua","assets\\DLC\\MP_MODSPACK\\UI\\LeaderHeadRoot.lua", false);
+	if(MPMPFileExists("Assets\\DLC\\UI_bc1\\CityView\\CityView.lua")){
+		CopyFile("Assets\\DLC\\UI_bc1\\CityView\\CityView.lua","assets\\DLC\\MP_MODSPACK\\UI\\CityView.lua", false);
+	}else{
+		CopyFile("Assets\\DLC\\Expansion2\\UI\\InGame\\CityView\\CityView.lua","assets\\DLC\\MP_MODSPACK\\UI\\CityView.lua", false);
+	}
+	if(MPMPFileExists("Assets\\DLC\\UI_bc1\\LeaderHead\\LeaderHeadRoot.lua")){
+		CopyFile("Assets\\DLC\\UI_bc1\\LeaderHead\\LeaderHeadRoot.lua","assets\\DLC\\MP_MODSPACK\\UI\\LeaderHeadRoot.lua", false);
+	}else{
+		CopyFile("Assets\\DLC\\Expansion2\\UI\\InGame\\LeaderHead\\LeaderHeadRoot.lua","assets\\DLC\\MP_MODSPACK\\UI\\LeaderHeadRoot.lua", false);
+	}
 
 	// Create empty gameplay files for the base game and DLC (the Database changes will be handled in the override of the base game's files)
 	// This way we keep the database.log clean.
@@ -11805,7 +11825,7 @@ bool CvGame::WriteMPMP(const char* szFileName, const char* szDataBase, bool bIni
 	return true;
 }
 
-bool CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char* version,const char* Banned)
+int CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char* version,const char* Banned) // --returns 0 if failure, 1000 if success, 1xyz if UI override has occurred x=1 for InGame.lua, y=1 for CityView.lua, z=1 for LeaderHeadRoot.lua. It's stupid but only safe to pass bool and int into lua
 {
 	// Logging
 	FILogFile* pLog;
@@ -11815,13 +11835,14 @@ bool CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char*
 	strTemp = szModName;
 	strOutBuf = "Copy Mod's Data To MPMP Folder for " + strTemp ;
 	pLog->Msg(strOutBuf);
+	int returnVal=0;
 
 	// Do not allow NULL entries
 	if(Banned == NULL || strlen(Banned) == 0)
 	{
 		pLog->Msg("Banned is NULL, aborting");
 		pLog->Msg("--------------------------------------------------------------------------------");
-		return false;
+		return 0;
 	}
 	CvString tempBanned=Banned ;
 
@@ -11850,7 +11871,7 @@ bool CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char*
 		pLog->Msg("Copying mod failed: Folder Not Found");
 		pLog->Msg(strTemp);
 		pLog->Msg("--------------------------------------------------------------------------------");
-		return false;
+		return 0;
 	}
 	
 	strModsPath = strTemp;
@@ -11865,22 +11886,26 @@ bool CvGame::CopyModDataToMPMP(const char* szModName,const char* id, const char*
 	CreateDirectory(strDLCPath, NULL);
 	
 	// Copy the Mod's files in the new folder	
-	int iRC = 0;
+	vector<int> iRC (4,0);
 	strOutBuf = "Copying Mod Files in Folder...";
 	pLog->Msg(strOutBuf);
 	iRC = CopyModFiles(strModsPath, strDLCPath, tempBanned);
-	if (iRC)
+	if (!iRC[0])
 	{
 		strTemp.Format("Copying mod failed with Error %d", iRC);
 		pLog->Msg(strTemp);
 		pLog->Msg("--------------------------------------------------------------------------------");
-		return false;
+		return 0;
 	}
-
+	for(unsigned int iter=1; iter<4;iter++){
+		iRC[iter]=min(iRC[iter],2);
+		returnVal+=iRC[iter]*(int) pow(10,(double) 3-iter);
+	}
 
 	pLog->Msg("Mod's Data copied...");
 	pLog->Msg("--------------------------------------------------------------------------------");
-	return true;
+	returnVal+=1000; //was successful
+	return returnVal;
 }
 
 CvString CvGame::GetModFromIdAndVersion(const std::string &refcstrRootDirectory,const std::string &modName,const std::string &id, const std::string &version)
@@ -12076,7 +12101,7 @@ int CvGame::OverrideGamePlayFiles(const std::string &refcstrRootDirectory)
 }
 
 // And copied here again to recursively copy all files from a mod's folder
-int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory, const std::string &strBanned)
+vector<int> CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &strDLCDirectory, const std::string &strBanned)
 {
 	HANDLE          hFile;                       // Handle to directory
 	CvString	    strFilePath;                 // Filepath
@@ -12091,6 +12116,9 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 	std::size_t		newLoc;
 	FILogFile*		pLog; //Log for MPMP
 
+	//flags for double UI override warnings
+	vector<int> returnVal (4,0);
+
 	pLog = LOGFILEMGR.GetLog("MPMPMaker.log", FILogFile::kDontTimeStamp);
 
 	strBuffer = "Beginning Mod File Copy...";
@@ -12103,7 +12131,7 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 		//lua_gettable isn't called a single time by anything in the original source, so I don't know what it returns
 		//To be safe, passing string instead (delimited by | which is banned from filenames on Windows
 		//Not using stringstream because inelegant and slow
-		pLog->Msg(strBanned.c_str());
+		//pLog->Msg(strBanned.c_str());
 		//strBanned=Banned;
 		strLoc=0;
 		while((newLoc=strBanned.find('|',strLoc))!=std::string::npos){ //If I knew anything about iterators, this probably wouldn't be necessary
@@ -12121,26 +12149,39 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 			{
 				// Found subdirectory
 				CreateDirectory((strDLCDirectory + "\\"+FileInformation.cFileName).c_str(),NULL); //using Windows function since we're already doing that anyway
-				int iRC = CopyModFiles(strFilePath,strDLCDirectory + "\\" + FileInformation.cFileName,strBanned); // do we want to create subdirs ? if yes, this need attention. //Hieronym: Yes we do
-				if(iRC)
-					return iRC;
+				vector<int> iRC = CopyModFiles(strFilePath,strDLCDirectory + "\\" + FileInformation.cFileName,strBanned); // do we want to create subdirs ? if yes, this need attention. //Hieronym: Yes we do
+				for(unsigned int iter=1; iter<4;iter++){
+					returnVal[iter]+=iRC[iter];
+				}
+				if(!iRC[0])
+					return returnVal;
 			}
 			else
 			{
 				strBuffer="Checking for files to be renamed...";
-				pLog->Msg(strBuffer);
+				//pLog->Msg(strBuffer);
 				// Copy the file
 				//Heironym: Check if file matches banned file names. If so, append "_RENAMED"
 				//A little hardcoded but it will probably be okay
 				strNewFilePath = strDLCDirectory + "\\" + FileInformation.cFileName;
+				strFileName=FileInformation.cFileName;
+				if(!strFileName.compare("InGame.lua")){ //Might as well go whole hog with hard-coding...can do it better if civ 5 ever changes enough to warrant it
+					returnVal[1]++;
+					CopyFile(strFilePath,"assets\\DLC\\MP_MODSPACK\\UI\\InGame.lua", false);
+				}else if(!strFileName.compare("CityView.lua")){ //Might as well go whole hog with hard-coding...can do it better if civ 5 ever changes enough to warrant it
+					returnVal[2]++;
+					CopyFile(strFilePath,"assets\\DLC\\MP_MODSPACK\\UI\\CityView.lua", false);
+				}else if(!strFileName.compare("LeaderHeadRoot.lua")){ //Might as well go whole hog with hard-coding...can do it better if civ 5 ever changes enough to warrant it
+					returnVal[3]++;
+					CopyFile(strFilePath,"assets\\DLC\\MP_MODSPACK\\UI\\LeaderHeadRoot.lua", false);
+				}
 				for (unsigned int iter=0; iter<bannedXmlList.size(); iter++){
 					strBuffer=bannedXmlList[iter]+".xml";
-					pLog->Msg(strBuffer);				
+					//pLog->Msg(strBuffer);	
 					if (!strBuffer.CompareNoCase(FileInformation.cFileName)){
-						strFileName=FileInformation.cFileName;
 						strNewFilePath = strDLCDirectory + "\\" + strFileName.substr(0,strFileName.size()-4) + "_RENAMED" + strFileName.substr(strFileName.size()-4);
 						break;
-					}
+					}	
 				}
 				CopyFile(strFilePath, strNewFilePath, false); // todo: handle errors
 			}
@@ -12150,7 +12191,8 @@ int CvGame::CopyModFiles(const std::string &strModDirectory, const std::string &
 		// Close handle
 		::FindClose(hFile);
 	}
-	return 0;
+	returnVal[0]=1;
+	return returnVal;
 }
 
 bool CvGame::AddUIAddinToMPMP(const char* szUIFileName, const char* szAddinFileName)

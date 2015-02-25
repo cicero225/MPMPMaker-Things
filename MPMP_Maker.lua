@@ -26,7 +26,6 @@
 		- create a small additional DLC (optional installation, as this one would require manual desinstallation) to handle automatically the launch of a small game session to configure the MP Modspack when entering the mod's menu
 		- the UI...
 		- handle DLL mods that may need renaming (see also limitations as a DLL with the mandatory Game function must be loaded)
-		- Audio2DScriptsExpansion1.xml and AudioDefinesExpansion1.xml still require things to be copied from the actual version buried in the game files. This should be done automatically.
 
 		- maybe put all frontend custom files in a separate DLC folder, and edit them (no delete/replace) with the content of the modded or original files (still need an uninstall mod for UI files):
 		std::ifstream ifs("input.txt", std::ios::binary);
@@ -167,15 +166,46 @@ end
 
 function CopyActivatedMods()
 	local activatedMods = Modding.GetActivatedMods()
+	local inGameOverridden=0;
+	local cityViewOverridden=0;
+	local leaderHeadRootOverridden=0;
 	for i,v in ipairs(activatedMods) do
 		if v.ID ~= MPMPMakerModID then -- but not this mod !
 			local name = Modding.GetModProperty(v.ID, v.Version, "Name");	
 			print2 ("Copying " .. name)
 			local Banned="CIV5AICityStrategies|CIV5AIEconomicStrategies|CIV5AIGrandStrategies|CIV5AIMilitaryStrategies|CIV5CitySpecializations|CIV5TacticalMoves|CIV5Attitudes|CIV5Calendars|CIV5CitySizes|CIV5Concepts|CIV5Contacts|CIV5DenialInfos|CIV5Domains|CIV5InvisibleInfos|CIV5MajorCivApproachTypes|CIV5MemoryInfos|CIV5MinorCivApproachTypes|CIV5MinorCivTraits|CIV5Months|CIV5Seasons|CIV5UnitAIInfos|CIV5UnitCombatInfos|CIV5BuildingClasses|CIV5Buildings|CIV5Civilizations|CIV5MinorCivilizations|CIV5Regions|CIV5Traits|Civ5Diplomacy_Responses|CIV5ArtStyleTypes|CIV5Climates|CIV5CultureLevels|CIV5Cursors|CIV5EmphasizeInfos|CIV5Eras|CIV5Flavors|CIV5GameOptions|CIV5GameSpeeds|CIV5GoodyHuts|CIV5HandicapInfos|CIV5HurryInfos|CIV5IconFontMapping|CIV5IconTextureAtlases|CIV5MultiplayerOptions|CIV5PlayerOptions|CIV5Policies|CIV5PolicyBranchTypes|CIV5Processes|CIV5Projects|CIV5Replays|CIV5SeaLevels|CIV5SmallAwards|CIV5Specialists|CIV5Trades|CIV5TurnTimers|CIV5Victories|CIV5Votes|CIV5VoteSources|CIV5Worlds|CIV5Colors|CIV5InterfaceModes|CIV5PlayerColors|CIV5LeaderTables|CIV5Routes|CIV5HintText|CIV5ModdingText|CIV5_Victory|CIV5Technologies|CIV5Features|CIV5Improvements|CIV5ResourceClasses|CIV5Resources|CIV5Terrains|CIV5Yields|Civ5AnimationCategories|Civ5AnimationPaths|CIV5Automates|CIV5Builds|CIV5Commands|CIV5Controls|Civ5EntityEvents|CIV5Missions|CIV5MultiUnitFormations|CIV5SpecialUnits|CIV5UnitClasses|CIV5UnitMovementRates|CIV5UnitPromotions|CIV5Units|"						
 			-- pass modID and version, parse the Mods folder in C++ for .modinfo files to find the correct folder even if it was not conventionnaly named...
-			local bCopied = Game.CopyModDataToMPMP(name, v.ID, tostring(v.Version),Banned)
-			if not bCopied then
+			local iCopied = Game.CopyModDataToMPMP(name, v.ID, tostring(v.Version),Banned) --returns 0 if failure, 1000 if success, 1xyz if UI override has occurred x=1 for InGame.lua, y=1 for CityView.lua, z=1 for LeaderHeadRoot.lua. if x, y, or z is 2, then it was overridden more than once. It's stupid but only safe to pass bool and int into lua. This is megassa hard-coded, but good enough...
+			if not iCopied then
 				error ("Failed! Couldn't find folder for mod: " .. name)
+			end
+			iCopied=iCopied-1000;
+			local tempVal=math.floor(iCopied/100);
+			inGameOverridden=inGameOverridden+tempVal;
+			iCopied=iCopied-tempVal;
+			if tempVal>0 then
+				print2 ("InGame.lua has been overwritten!")
+				if inGameOverriden>1 then
+					print2 ("InGame.lua has been overwritten by a mod more than once. This may cause compatibility issues.")
+				end
+			end
+			local tempVal=math.floor(iCopied/10);
+			cityViewOverridden=cityViewOverridden+tempVal;
+			iCopied=iCopied-tempVal;
+			if tempVal>0 then
+				print2 ("InGame.lua has been overwritten! If you are using Enhanced UI, this WILL cause errors.")
+				if cityViewOverridden>1 then
+					print2 ("CityView.lua has been overwritten by a mod more than once. This may cause compatibility issues.")
+				end
+			end
+			local tempVal=iCopied;
+			leaderHeadRootOverridden=leaderHeadRootOverridden+iCopied;
+			--iCopied=0;
+			if tempVal>0 then
+				print2 ("LeaderHeadRoot.lua has been overwritten! If you are using Enhanced UI, this WILL cause errors.")
+				if leaderHeadRootOverridden>1 then
+					print2 ("LeaderHeadRoot.lua has been overwritten by a mod more than once. This may cause compatibility issues.")
+				end
 			end
 		end
 	end
