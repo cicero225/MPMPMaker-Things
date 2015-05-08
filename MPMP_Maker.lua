@@ -125,7 +125,8 @@ end
 
 function CleanWrite(GamePlayFileName, str, boolVar) --Does some additional processing of strings before writing them, because the database does not always match the xml exactly. Intended to replace Game.WriteMPMP usage elsewhere. May do more elaborate things in future if necessary
 
-	local outStr=string.gsub(str,"<<","&lt;&lt;")
+	local outStr=string.gsub(str,"<","&lt;")
+	outStr=string.gsub(outStr,">","&gt;")
 	Game.WriteMPMP( GamePlayFileName, outStr, boolVar)
 end
 
