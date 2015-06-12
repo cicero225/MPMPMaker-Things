@@ -221,7 +221,7 @@ function CopyActivatedMods()
 			iCopied=iCopied-tempVal;
 			if tempVal>0 then
 				print2 ("InGame.lua has been overwritten!")
-				if inGameOverriden>1 then
+				if inGameOverridden>1 then
 					print2 ("InGame.lua has been overwritten by a mod more than once. This may cause compatibility issues.")
 				end
 			end
