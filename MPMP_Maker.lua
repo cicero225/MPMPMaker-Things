@@ -229,7 +229,7 @@ function CopyActivatedMods()
 			cityViewOverridden=cityViewOverridden+tempVal;
 			iCopied=iCopied-tempVal;
 			if tempVal>0 then
-				print2 ("InGame.lua has been overwritten! If you are using Enhanced UI, this WILL cause errors.")
+				print2 ("CityView.lua has been overwritten! If you are using Enhanced UI, this WILL cause errors.")
 				if cityViewOverridden>1 then
 					print2 ("CityView.lua has been overwritten by a mod more than once. This may cause compatibility issues.")
 				end
