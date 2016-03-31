@@ -11918,9 +11918,12 @@ CvString CvGame::GetModFromIdAndVersion(const std::string &refcstrRootDirectory,
   std::string     strFilePath;               // File path
   WIN32_FIND_DATA ModinfoFileInformation; // Modinfo file information
   HANDLE hModInfoFile; // Handle to modinfo file
-  
+  FILogFile* pLog; //Logging file handle
+
+  pLog = LOGFILEMGR.GetLog("MPMPMaker.log", FILogFile::kDontTimeStamp);
   strPattern = refcstrRootDirectory + "\\*.*";
   hFile = ::FindFirstFile(strPattern.c_str(), &FileInformation);
+  std::string strTemp = modName + " (v " + version + ").modinfo";
   if(hFile != INVALID_HANDLE_VALUE)
   {
     do
@@ -11932,35 +11935,33 @@ CvString CvGame::GetModFromIdAndVersion(const std::string &refcstrRootDirectory,
 
         if(FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-			std::string strTemp = modName + " (v " + version + ").modinfo";
 
 			//folder found, check .modinfo
 			strPattern = strFolderPath + "\\*.modinfo";
 			hModInfoFile = ::FindFirstFile(strPattern.c_str(), &ModinfoFileInformation);
 			if(hModInfoFile != INVALID_HANDLE_VALUE)
 			{
-				if (strTemp.compare(ModinfoFileInformation.cFileName) == 0){
-					//file found is named correctly
-					strFilePath = strFolderPath + "\\" + ModinfoFileInformation.cFileName;
+				//This check is unnecessary. If the modinfo contains the right mod details, who cares what it's named. //if (strTemp.compare(ModinfoFileInformation.cFileName) == 0){
+				strFilePath = strFolderPath + "\\" + ModinfoFileInformation.cFileName;
 					
-					std::ifstream file(strFilePath.c_str());
-					std::string line;
-					while(std::getline(file, line)){
-						int char_1 = line.find('"');
-						int char_2 = line.find('"',char_1+1);
-						int char_3 = line.find('"',char_2+1);
-						int char_4 = line.find('"',char_3+1);
-						std::string mod_id = line.substr(char_1+1,char_2 - char_1 - 1);
-						std::string mod_version = line.substr(char_3+1,char_4 - char_3 - 1);
-						if (id.compare(mod_id) == 0 && version.compare(mod_version)==0)
-						{//match!
-							// Close handle
-							::FindClose(hModInfoFile);
-							::FindClose(hFile);
-							return strFolderPath;
-						}
+				std::ifstream file(strFilePath.c_str());
+				std::string line;
+				while(std::getline(file, line)){
+					int char_1 = line.find('"');
+					int char_2 = line.find('"',char_1+1);
+					int char_3 = line.find('"',char_2+1);
+					int char_4 = line.find('"',char_3+1);
+					std::string mod_id = line.substr(char_1+1,char_2 - char_1 - 1);
+					std::string mod_version = line.substr(char_3+1,char_4 - char_3 - 1);
+					if (id.compare(mod_id) == 0 && version.compare(mod_version)==0)
+					{//match!
+						// Close handle
+						::FindClose(hModInfoFile);
+						::FindClose(hFile);
+						return strFolderPath;
 					}
-				}				
+				}
+				//}
 			}
 			::FindClose(hModInfoFile);
 			//next folder		
@@ -11971,7 +11972,8 @@ CvString CvGame::GetModFromIdAndVersion(const std::string &refcstrRootDirectory,
     // Close handle
     ::FindClose(hFile);
   }
-  
+  strTemp ="Modinfo not found for " + modName + " (v " + version + "). This folder will not copy!";
+  pLog->Msg(strTemp.c_str());
   return "";
 }
 
